@@ -54,6 +54,12 @@ func (s *ScannerService) ScanRepo(ctx context.Context, repoPath string) error {
 	})
 }
 
+// CloseQueue signals to workers that no more chunks are coming.
+// Call this AFTER ScanRepo finishes walking all files.
+func (s *ScannerService) CloseQueue() {
+    close(s.queue)
+}
+
 // isSupportedFile returns true if the file is of a supported type we want to index
 func isSupportedFile(path string) bool{
 	    supported := map[string]bool{
