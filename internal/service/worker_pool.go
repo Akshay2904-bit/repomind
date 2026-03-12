@@ -4,12 +4,15 @@ import (
 	"context"
 	"log"
 	"sync"
+
 	"github.com/Akshay2904-bit/repomind/internal/model"
 )
 
-const NumWorkers = 10 // number of PARALLER GO ROUTINES
+const NumWorkers = 10 // number of parallel goroutines
 
-// StartWorkers laumches 10 goroutines that process chunks from the queue
+// StartWorkers launches NumWorkers goroutines that process chunks from the queue.
+// IMPORTANT: Call this BEFORE ScanRepo, then close(scanner.Queue()) after ScanRepo returns.
+// The workers range over s.queue — they exit automatically when the channel is closed.
 func (s *ScannerService) StartWorkers(ctx context.Context, repoID int) {
 	var wg sync.WaitGroup
 
@@ -17,25 +20,30 @@ func (s *ScannerService) StartWorkers(ctx context.Context, repoID int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for chunk := range s.queue {
+			for chunk := range s.queue { // blocks until a chunk arrives; exits when channel is closed
 				embedding, err := s.embedder.Embed(ctx, chunk.Content)
 				if err != nil {
-					log.Printf("Failed to embed chunk %d: %v", chunk.FilePath, err)
+					log.Printf("embed error for %s: %v", chunk.FilePath, err)
 					continue
 				}
 				err = s.repo.InsertChunk(ctx, &model.CodeChunk{
-					RepoID:   repoID,
-					FilePath: chunk.FilePath,
-					Content:  chunk.Content,
+					RepoID:    repoID,
+					FilePath:  chunk.FilePath,
+					Content:   chunk.Content,
 					StartLine: chunk.StartLine,
 					EndLine:   chunk.EndLine,
 					Embedding: embedding,
 				})
 				if err != nil {
-					log.Printf("Failed to insert chunk %d into DB: %v", chunk.FilePath, err)
+					log.Printf("db insert error: %v", err)
 				}
 			}
 		}()
 	}
-	wg.Wait() // wait for all workers to finish
+
+	// NOTE: wg.Wait() is intentionally NOT called here.
+	// StartWorkers is called from a goroutine in IndexRepo.
+	// The goroutine closes the channel after ScanRepo finishes,
+	// which causes all workers to exit their range loops naturally.
+	// If you need to block until done, add wg.Wait() and call close() before this.
 }
