@@ -30,8 +30,15 @@ func (h *Handler) AskQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Step 1.5: resolve repo name → integer ID
+	repoID, err := h.chunkRepo.GetRepoIDByName(r.Context(), req.Repo)
+	if err != nil {
+		http.Error(w, "repo not found: "+req.Repo, http.StatusNotFound)
+		return
+	}
+
 	//step 2: search for the 5 most aimialr code chunks in the database
-	chunks, err := h.chunkrepo.SimilarChunks(r.Context(), req.Repo, qEmbed, 5)
+	chunks, err := h.chunkRepo.SimilarChunks(r.Context(), repoID, qEmbed, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

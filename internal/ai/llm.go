@@ -22,7 +22,7 @@ func NewLLM(ollamaURL, modelName string) *LLM {
 	}
 }
 
-func (l *LLM) Answers(ctx context.Context, question string, chunks []*model.CodeChunk) (string, error) {
+func (l *LLM) Answer(ctx context.Context, question string, chunks []*model.CodeChunk) (string, error) {
 
 	//build context block from the retrieved code chunks
 	var ctxBlock strings.Builder

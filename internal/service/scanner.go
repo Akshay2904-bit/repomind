@@ -5,17 +5,25 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-
+	"github.com/Akshay2904-bit/repomind/internal/model"
+	"github.com/Akshay2904-bit/repomind/internal/ai"
 	"github.com/Akshay2904-bit/repomind/pkg/chunker"
 )
 
-type ScannerService struct {
-	queue    chan chunker.Chunk // channel that feeds the worker pool
-	embedder *EmbedderService
-	repo     RepositoryStore
+// RepositoryStore is an interface — any type that has InsertChunk works here.
+// Your *repository.ChunkRepository already satisfies this automatically
+// because it has an InsertChunk method with this exact signature.
+type RepositoryStore interface {
+    InsertChunk(ctx context.Context, c *model.CodeChunk) error
 }
 
-func NewScannerService(embedder *EmbedderService, repo RepositoryStore) *ScannerService {
+type ScannerService struct {
+    queue    chan chunker.Chunk  // channel that feeds the worker pool
+    embedder *ai.Embedder       // the Ollama embedder from internal/ai/embedder.go
+    repo     RepositoryStore    // accepts *repository.ChunkRepository
+}
+
+func NewScannerService(embedder *ai.Embedder, repo RepositoryStore) *ScannerService {
 	return &ScannerService{
 		queue:    make(chan chunker.Chunk, 1000), //buffered channel can be used if needed
 		embedder: embedder,
@@ -42,6 +50,7 @@ func (s *ScannerService) ScanRepo(ctx context.Context, repoPath string) error {
 		for _, ch := range chunks {
 			s.queue <- ch // send chunk to the worker pool
 		}
+		return nil
 	})
 }
 

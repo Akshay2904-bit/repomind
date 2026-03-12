@@ -15,6 +15,15 @@ func NewChunkRepository(db *pgxpool.Pool) *ChunkRepository {
 	return &ChunkRepository{db: db}
 }
 
+// internal/repository/chunk_repo.go
+func (r *ChunkRepository) GetRepoIDByName(ctx context.Context, name string) (int, error) {
+    var id int
+    err := r.db.QueryRow(ctx,
+        `SELECT id FROM repositories WHERE name = $1`, name,
+    ).Scan(&id)
+    return id, err
+}
+
 // InsterChunk saves a code chunk and its embedded to the database
 func (r *ChunkRepository) InsertChunk(ctx context.Context, chunk model.CodeChunk) error {
 	_, err := r.db.Exec(ctx,
@@ -25,8 +34,7 @@ func (r *ChunkRepository) InsertChunk(ctx context.Context, chunk model.CodeChunk
 }
 
 // SimilarChunks finds the N most semantically similar chunks to a query embedding
-func (r *ChunkRepository) SimilarChunks(ctx context.Context,
-    repoID int, embedding []float32, limit int) ([]*model.CodeChunk, error) {
+func (r *ChunkRepository) SimilarChunks(ctx context.Context, repoID int, embedding []float32, limit int) ([]*model.CodeChunk, error) {
     rows, err := r.db.Query(ctx,
         `SELECT file_path, content, start_line, end_line
          FROM code_chunks
@@ -47,4 +55,6 @@ func (r *ChunkRepository) SimilarChunks(ctx context.Context,
     }
     return chunks, rows.Err()
 }
+
+
 
