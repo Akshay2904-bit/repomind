@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/Akshay2904-bit/repomind/internal/ai"
 	"github.com/Akshay2904-bit/repomind/internal/repository"
@@ -16,6 +16,7 @@ type Handler struct {
 	embedder  *ai.Embedder
 	llm       *ai.LLM
 	chunkRepo *repository.ChunkRepository
+	askSvc    *service.AskService
 }
 
 // NewHandler wires all dependencies together.
@@ -23,11 +24,13 @@ func NewHandler(
 	embedder *ai.Embedder,
 	llm *ai.LLM,
 	chunkRepo *repository.ChunkRepository,
+	askSvc *service.AskService,
 ) *Handler {
 	return &Handler{
 		embedder:  embedder,
 		llm:       llm,
 		chunkRepo: chunkRepo,
+		askSvc:    askSvc,
 	}
 }
 
@@ -62,14 +65,15 @@ func (h *Handler) IndexRepo(w http.ResponseWriter, r *http.Request) {
 	// chunkRepo satisfies service.RepositoryStore because it has InsertChunk —
 	// Go interfaces are implicit, no cast or wrapper needed.
 	go func() {
-		scanner := service.NewScannerService(h.embedder, h.chunkRepo) // ✅ this works
-		scanner.StartWorkers(r.Context(), repoID)
-		if err := scanner.ScanRepo(r.Context(), req.Path); err != nil {
-			log.Printf("scan error for repo %s: %v", repoName, err)
-		}
-		close(scanner.Queue()) // closes the channel → workers exit their range loops
-		log.Printf("indexing complete for repo: %s (id=%d)", repoName, repoID)
-	}()
+    ctx := context.Background() // ← use this, not r.Context()
+    scanner := service.NewScannerService(h.embedder, h.chunkRepo)
+    scanner.StartWorkers(ctx, repoID)
+    if err := scanner.ScanRepo(ctx, req.Path); err != nil {
+        log.Printf("scan error for %s: %v", repoName, err)
+    }
+    close(scanner.Queue())
+    log.Printf("indexing complete: %s", repoName)
+}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"status":"indexing started"}`))

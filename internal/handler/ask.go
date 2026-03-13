@@ -45,11 +45,12 @@ func (h *Handler) AskQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	answer, err := h.llm.Answer(r.Context(), req.Question, chunks)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	answer, err := h.askSvc.AskWithCache(r.Context(), req.Repo, req.Question)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+	
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AskResponse{

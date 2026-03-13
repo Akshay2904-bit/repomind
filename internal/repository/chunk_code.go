@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Akshay2904-bit/repomind/internal/model"
 	"github.com/jackc/pgx/v5/pgxpool"
 	pgvector "github.com/pgvector/pgvector-go"
-	"github.com/Akshay2904-bit/repomind/internal/model"
 )
 
 type ChunkRepository struct {
@@ -22,10 +22,10 @@ func NewChunkRepository(db *pgxpool.Pool) *ChunkRepository {
 func (r *ChunkRepository) GetOrCreateRepo(ctx context.Context, name string) (int, error) {
 	var id int
 	err := r.db.QueryRow(ctx,
-		`INSERT INTO repositories (name) VALUES ($1)
-		 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-		 RETURNING id`,
-		name).Scan(&id)
+		`INSERT INTO repositories (name, url) VALUES ($1, $2)
+         ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id`,
+		name, "").Scan(&id)
 	return id, err
 }
 

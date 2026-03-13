@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	ollama "github.com/ollama/ollama/api"
+
 	"github.com/Akshay2904-bit/repomind/internal/model"
+	ollama "github.com/ollama/ollama/api"
 )
 
-
 type LLM struct {
-	client *ollama.Client
+	client    *ollama.Client
 	modelName string
 }
 
 func NewLLM(ollamaURL, modelName string) *LLM {
 	return &LLM{
-		client: ollama.NewClient(mustParseURL(ollamaURL), &http.Client{}),
+		client:    ollama.NewClient(mustParseURL(ollamaURL), &http.Client{}),
 		modelName: modelName,
 	}
 }
@@ -29,24 +29,31 @@ func (l *LLM) Answer(ctx context.Context, question string, chunks []*model.CodeC
 	for _, chunk := range chunks {
 		fmt.Fprintf(
 			&ctxBlock,
-            "### File: %s (lines %d-%d)\n%s\n\n",
-            chunk.FilePath, chunk.StartLine, chunk.EndLine, chunk.Content)
+			"### File: %s (lines %d-%d)\n%s\n\n",
+			chunk.FilePath, chunk.StartLine, chunk.EndLine, chunk.Content)
 	}
 
 	prompt := fmt.Sprintf(`You are an expert code assistant.
-	Answer ONLY using the code context below.
+	Answer using the code context below.
 	Reference specific file paths and line numbers in your answer.
-	If the answer is not in the context, say 'I could not find that in the indexed code.'
+	give a descriptive answer, not just a code snippet. If the question cannot be answered make some logical assumptions based on the context
+	and answer accordingly.
+	give reasoning for your answer based on the provided code context.
+	for eg "the reason  believe this is because of the function defined in file X at line Y which does Z"
+	If the question is not related to the code, say "I can only answer questions related to the provided code context.
+	Answer in points if there are multiple reasons for your answer, and provide a summary at the end.
+	remove unnecessary noise from the final answer any symbols etc
+	"
 
 	Context:
 	%s
 	Question: %s`, ctxBlock.String(), question)
 
-	//stream=false means we wait for the complete response 
+	//stream=false means we wait for the complete response
 	var answer strings.Builder
 	streamFalse := false
 	err := l.client.Generate(ctx, &ollama.GenerateRequest{
-		Model: l.modelName,
+		Model:  l.modelName,
 		Prompt: prompt,
 		Stream: &streamFalse,
 	}, func(resp ollama.GenerateResponse) error {

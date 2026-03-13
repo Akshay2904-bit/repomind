@@ -12,7 +12,10 @@ import (
     "github.com/Akshay2904-bit/repomind/internal/ai"
     "github.com/Akshay2904-bit/repomind/internal/handler"
     "github.com/Akshay2904-bit/repomind/internal/repository"
+    "github.com/Akshay2904-bit/repomind/internal/service"
+    "github.com/redis/go-redis/v9"
 )
+
 
 func main() {
 	//Load env file
@@ -27,6 +30,12 @@ func main() {
     }
     defer db.Close()
 
+    rdb := redis.NewClient(&redis.Options{
+    Addr: os.Getenv("REDIS_URL"), // redis://localhost:6379
+    })
+
+
+
 	//initialize dependencies
     ollamaURL  := os.Getenv("OLLAMA_URL")   // e.g. http://localhost:11434
     embedModel := os.Getenv("EMBED_MODEL")  // e.g. nomic-embed-text
@@ -34,7 +43,8 @@ func main() {
     embedder   := ai.NewEmbedder(ollamaURL, embedModel)
     llm        := ai.NewLLM(ollamaURL, chatModel)
     chunkRepo  := repository.NewChunkRepository(db)
-    h          := handler.NewHandler(embedder, llm, chunkRepo)
+    askSvc := service.NewAskService(rdb, embedder, chunkRepo, llm)
+    h := handler.NewHandler(embedder, llm, chunkRepo, askSvc)
 
 
         // Set up HTTP router
@@ -48,4 +58,6 @@ func main() {
  
     log.Printf("Server starting on port %s", os.Getenv("PORT"))
     log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), r))
+
+    
 }
