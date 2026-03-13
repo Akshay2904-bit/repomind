@@ -1,4 +1,4 @@
-# RepoMind 🧠
+# RepoMind 
 
 > **AI-powered codebase knowledge engine** — ask natural language questions about any GitHub repository or local codebase and get answers grounded in the actual source code.
 
@@ -329,7 +329,3 @@ This builds the Go binary in a multi-stage Docker image and starts all three ser
 - Deployed fully offline multi-service stack (Go API, PostgreSQL, Redis, Ollama) with Docker Compose — zero cloud API costs
 
 ---
-
-## License
-
-MIT
